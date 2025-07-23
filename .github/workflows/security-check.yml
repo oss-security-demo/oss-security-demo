@@ -33,9 +33,11 @@ jobs:
         run: |
           curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
 
-      - name: Run Grype Scan on SBOM
+      - name: Run Grype Scan on SBOM and Fallback
         run: |
-          grype sbom:sbom.json -o table || true
+          grype sbom:sbom.json -o table || \
+          grype dir:. -o table || true
+
 
       - name: Run OpenSSF Scorecard
         uses: ossf/scorecard-action@v2.1.2
