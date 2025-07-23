@@ -38,7 +38,7 @@ jobs:
           grype sbom:sbom.json -o table || true
 
       - name: Run OpenSSF Scorecard
-        uses: ossf/scorecard-action@v2
+        uses: ossf/scorecard-action@v2.1.2
         with:
           results_file: scorecard-results.json
           results_format: json
