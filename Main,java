@@ -5,6 +5,6 @@ public class Main {
     private static final Logger logger = LogManager.getLogger(Main.class);
 
     public static void main(String[] args) {
-        logger.info("Hello from Log4j – Test for CVE-2021-44228");
+        logger.info("Hello from Log4j – Test for CVE-2021-44228 - Hello Darknesssssss");
     }
 }
