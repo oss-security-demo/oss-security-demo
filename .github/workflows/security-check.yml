@@ -13,31 +13,31 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: 🛎️ Checkout code
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: 🧱 Set up environment
+      - name: Set up environment
         run: |
           sudo apt update
           sudo apt install -y curl jq
 
-      - name: 📆 Install Syft (SBOM)
+      - name: Install Syft (SBOM)
         run: |
           curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
 
-      - name: 📄 Generate SBOM (CycloneDX)
+      - name: Generate SBOM (CycloneDX)
         run: |
           syft dir:. -o cyclonedx-json > sbom.json
 
-      - name: 🔐 Install Grype
+      - name: Install Grype
         run: |
           curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
 
-      - name: 🚨 Run Grype Scan (dir)
+      - name: Run Grype Scan (dir)
         run: |
           grype dir:. -o json > grype-results.json || true
 
-      - name: 📊 Run OpenSSF Scorecard
+      - name: Run OpenSSF Scorecard
         uses: ossf/scorecard-action@v2.1.2
         with:
           results_file: scorecard-results.json
@@ -46,9 +46,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         continue-on-error: true
 
-      - name: 📝 Generate Plain Text Report
+      - name: Generate Plain Text Report
         run: |
-          echo "📆 Sicherheitsbericht – GitHub Repo" > security-report.txt
+          echo "Sicherheitsbericht – GitHub Repo" > security-report.txt
           echo -e "\n== Abhängigkeiten (SBOM) ==" >> security-report.txt
           jq -r '.components[] | "- \(.name): \(.version) (\(.type))"' sbom.json >> security-report.txt
 
