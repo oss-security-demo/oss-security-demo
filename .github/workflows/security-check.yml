@@ -13,44 +13,63 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: 🛎️ Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up environment
+      - name: 🧱 Set up environment
         run: |
           sudo apt update
           sudo apt install -y curl jq
 
-      - name: Install Syft
+      - name: 📆 Install Syft (SBOM)
         run: |
           curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
 
-      - name: Generate SBOM (CycloneDX)
+      - name: 📄 Generate SBOM (CycloneDX)
         run: |
           syft dir:. -o cyclonedx-json > sbom.json
 
-      - name: Install Grype
+      - name: 🔐 Install Grype
         run: |
           curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
 
-      - name: Run Grype Scan on SBOM and Fallback
+      - name: 🚨 Run Grype Scan (dir)
         run: |
-          grype sbom:sbom.json -o table || \
-          grype dir:. -o table || true
+          grype dir:. -o json > grype-results.json || true
 
-
-      - name: Run OpenSSF Scorecard
+      - name: 📊 Run OpenSSF Scorecard
         uses: ossf/scorecard-action@v2.1.2
         with:
           results_file: scorecard-results.json
           results_format: json
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
 
-      - name: Upload SBOM & Scorecard Results
+      - name: 📝 Generate Plain Text Report
+        run: |
+          echo "📆 Sicherheitsbericht – GitHub Repo" > security-report.txt
+          echo -e "\n== Abhängigkeiten (SBOM) ==" >> security-report.txt
+          jq -r '.components[] | "- \(.name): \(.version) (\(.type))"' sbom.json >> security-report.txt
+
+          echo -e "\n== Gefundene Schwachstellen (Grype) ==" >> security-report.txt
+          if [ -s grype-results.json ]; then
+            jq -r '.matches[] | "- \(.vulnerability.id) in \(.artifact.name)@\(.artifact.version) [\(.vulnerability.severity)]"' grype-results.json >> security-report.txt
+          else
+            echo "Keine Schwachstellen oder Fehler beim Scan" >> security-report.txt
+          fi
+
+          echo -e "\n== Scorecard ==" >> security-report.txt
+          SCORE=$(jq '.scorecard.score' scorecard-results.json)
+          echo "- Score: ${SCORE} / 10" >> security-report.txt
+          jq -r '.scorecard.checks[] | "- \(.name): \(.score) – \(.reason)"' scorecard-results.json >> security-report.txt
+
+      - name: ☁️ Upload Ergebnisse
         uses: actions/upload-artifact@v4
         with:
-          name: security-results
+          name: security-analysis-report
           path: |
             sbom.json
+            grype-results.json
             scorecard-results.json
+            security-report.txt
