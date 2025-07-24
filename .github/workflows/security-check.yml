@@ -46,6 +46,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         continue-on-error: true
 
+
+
       - name: Generate Text Report
         run: |
           echo "Sicherheitsbericht – GitHub Repo" > security-report.txt
