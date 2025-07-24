@@ -46,30 +46,35 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         continue-on-error: true
 
-      - name: Generate Plain Text Report
+      - name: Generate Text Report
         run: |
           echo "Sicherheitsbericht – GitHub Repo" > security-report.txt
+
           echo -e "\n== Abhängigkeiten (SBOM) ==" >> security-report.txt
-          jq -r '.components[] | "- \(.name): \(.version) (\(.type))"' sbom.json >> security-report.txt
+          if [ -f sbom.json ]; then
+            jq -r '.components[]? | "- \(.name): \(.version) (\(.type))"' sbom.json >> security-report.txt || echo "Fehler beim Lesen der SBOM" >> security-report.txt
+          else
+            echo "SBOM-Datei fehlt" >> security-report.txt
+          fi
 
           echo -e "\n== Gefundene Schwachstellen (Grype) ==" >> security-report.txt
           if [ -s grype-results.json ]; then
-            jq -r '.matches[] | "- \(.vulnerability.id) in \(.artifact.name)@\(.artifact.version) [\(.vulnerability.severity)]"' grype-results.json >> security-report.txt
+            jq -r '.matches[]? | "- \(.vulnerability.id) in \(.artifact.name)@\(.artifact.version) [\(.vulnerability.severity)]"' grype-results.json >> security-report.txt || echo "Fehler beim Lesen der Grype-Datei" >> security-report.txt
           else
-            echo "Keine Schwachstellen oder Fehler beim Scan" >> security-report.txt
+            echo "Grype-Ergebnisse fehlen oder leer" >> security-report.txt
           fi
 
           echo -e "\n== Scorecard ==" >> security-report.txt
-          SCORE=$(jq '.scorecard.score' scorecard-results.json)
-          echo "- Score: ${SCORE} / 10" >> security-report.txt
-          jq -r '.scorecard.checks[] | "- \(.name): \(.score) – \(.reason)"' scorecard-results.json >> security-report.txt
+          if [ -s scorecard-results.json ]; then
+            SCORE=$(jq '.scorecard.score' scorecard-results.json 2>/dev/null || echo "N/A")
+            echo "- Score: ${SCORE} / 10" >> security-report.txt
+            jq -r '.scorecard.checks[]? | "- \(.name): \(.score) – \(.reason)"' scorecard-results.json >> security-report.txt || echo "Fehler bei Scorecard-Auswertung" >> security-report.txt
+          else
+            echo "Scorecard-Datei fehlt oder leer" >> security-report.txt
+          fi
 
-      - name: ☁️ Upload Ergebnisse
+      - name: Upload Textreport
         uses: actions/upload-artifact@v4
         with:
-          name: security-analysis-report
-          path: |
-            sbom.json
-            grype-results.json
-            scorecard-results.json
-            security-report.txt
+          name: security-text-report
+          path: security-report.txt
